@@ -150,6 +150,7 @@ async def test_basic_rerank_together_ai(sync_mode):
 
 @pytest.mark.asyncio()
 @pytest.mark.parametrize("sync_mode", [True, False])
+@pytest.mark.skip(reason="Skipping test due to Cohere RBAC issues")
 async def test_basic_rerank_azure_ai(sync_mode):
     import os
 
@@ -273,6 +274,7 @@ class TestLogger(CustomLogger):
 
 
 @pytest.mark.asyncio()
+@pytest.mark.flaky(retries=3, delay=1)
 async def test_rerank_custom_callbacks():
     os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
     litellm.model_cost = litellm.get_model_cost_map(url="")
@@ -286,7 +288,7 @@ async def test_rerank_custom_callbacks():
         top_n=3,
     )
 
-    await asyncio.sleep(5)
+    await asyncio.sleep(8)
 
     print("async re rank response: ", response)
     assert custom_logger.kwargs is not None

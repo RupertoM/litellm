@@ -8,6 +8,7 @@ import json
 import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
+
 from httpx._models import Headers, Response
 
 import litellm
@@ -37,6 +38,7 @@ class SagemakerConfig(BaseConfig):
     """
 
     max_new_tokens: Optional[int] = None
+    max_completion_tokens: Optional[int] = None
     top_p: Optional[float] = None
     temperature: Optional[float] = None
     return_full_text: Optional[bool] = None
@@ -44,6 +46,7 @@ class SagemakerConfig(BaseConfig):
     def __init__(
         self,
         max_new_tokens: Optional[int] = None,
+        max_completion_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         temperature: Optional[float] = None,
         return_full_text: Optional[bool] = None,
@@ -65,7 +68,7 @@ class SagemakerConfig(BaseConfig):
         )
 
     def get_supported_openai_params(self, model: str) -> List:
-        return ["stream", "temperature", "max_tokens", "top_p", "stop", "n"]
+        return ["stream", "temperature", "max_tokens", "max_completion_tokens", "top_p", "stop", "n"]
 
     def map_openai_params(
         self,
@@ -101,6 +104,8 @@ class SagemakerConfig(BaseConfig):
                 # Failed: Error occurred: HuggingfaceException - Input validation error: `max_new_tokens` must be strictly positive
                 if value == 0:
                     value = 1
+                optional_params["max_new_tokens"] = value
+            if param == "max_completion_tokens":
                 optional_params["max_new_tokens"] = value
         non_default_params.pop("aws_sagemaker_allow_zero_temp", None)
         return optional_params
@@ -273,3 +278,5 @@ class SagemakerConfig(BaseConfig):
             headers = {"Content-Type": "application/json", **headers}
 
         return headers
+
+

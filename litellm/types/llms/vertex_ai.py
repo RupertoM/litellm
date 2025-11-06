@@ -1,11 +1,12 @@
 import json
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from typing_extensions import (
     Protocol,
     Required,
     Self,
+    TypedDict,
     TypeGuard,
     get_origin,
     override,
@@ -39,6 +40,8 @@ class PartType(TypedDict, total=False):
     file_data: FileDataType
     function_call: FunctionCall
     function_response: FunctionResponse
+    thought: bool
+    thoughtSignature: str
 
 
 class HttpxFunctionCall(TypedDict):
@@ -69,6 +72,8 @@ class HttpxPartType(TypedDict, total=False):
     functionResponse: FunctionResponse
     executableCode: HttpxExecutableCode
     codeExecutionResult: HttpxCodeExecutionResult
+    thought: bool
+    thoughtSignature: str
 
 
 class HttpxContentType(TypedDict, total=False):
@@ -87,7 +92,7 @@ class SystemInstructions(TypedDict):
 
 class Schema(TypedDict, total=False):
     type: Literal["STRING", "INTEGER", "BOOLEAN", "NUMBER", "ARRAY", "OBJECT"]
-    format: str
+    format: Literal["enum", "date-time"]
     title: str
     description: str
     nullable: bool
@@ -166,6 +171,30 @@ class SafetSettingsConfig(TypedDict, total=False):
     method: HarmBlockMethod
 
 
+class GeminiThinkingConfig(TypedDict, total=False):
+    includeThoughts: bool
+    thinkingBudget: int
+
+
+GeminiResponseModalities = Literal["TEXT", "IMAGE", "AUDIO", "VIDEO"]
+
+GeminiImageAspectRatio = Literal["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]
+
+class GeminiImageConfig(TypedDict, total=False):
+    aspectRatio: GeminiImageAspectRatio
+
+class PrebuiltVoiceConfig(TypedDict):
+    voiceName: str
+
+
+class VoiceConfig(TypedDict):
+    prebuiltVoiceConfig: PrebuiltVoiceConfig
+
+
+class SpeechConfig(TypedDict, total=False):
+    voiceConfig: VoiceConfig
+
+
 class GenerationConfig(TypedDict, total=False):
     temperature: float
     top_p: float
@@ -180,7 +209,19 @@ class GenerationConfig(TypedDict, total=False):
     seed: int
     responseLogprobs: bool
     logprobs: int
-    responseModalities: List[Literal["TEXT", "IMAGE", "AUDIO", "VIDEO"]]
+    responseModalities: List[GeminiResponseModalities]
+    imageConfig: GeminiImageConfig
+    thinkingConfig: GeminiThinkingConfig
+
+
+class VertexToolName(str, Enum):
+    """Enum for Vertex AI tool field names."""
+    GOOGLE_SEARCH = "googleSearch"
+    GOOGLE_SEARCH_RETRIEVAL = "googleSearchRetrieval"
+    ENTERPRISE_WEB_SEARCH = "enterpriseWebSearch"
+    URL_CONTEXT = "url_context"
+    CODE_EXECUTION = "code_execution"
+    GOOGLE_MAPS = "googleMaps"
 
 
 class Tools(TypedDict, total=False):
@@ -188,7 +229,9 @@ class Tools(TypedDict, total=False):
     googleSearch: dict
     googleSearchRetrieval: dict
     enterpriseWebSearch: dict
+    url_context: dict
     code_execution: dict
+    googleMaps: dict
     retrieval: Retrieval
 
 
@@ -210,7 +253,22 @@ class UsageMetadata(TypedDict, total=False):
     promptTokenCount: int
     totalTokenCount: int
     candidatesTokenCount: int
+    responseTokenCount: int
     cachedContentTokenCount: int
+    promptTokensDetails: List[PromptTokensDetails]
+    thoughtsTokenCount: int
+    responseTokensDetails: List[PromptTokensDetails]
+
+
+class TokenCountDetailsResponse(TypedDict):
+    """
+    Response structure for token count details with modality breakdown.
+
+    Example:
+        {'totalTokens': 12, 'promptTokensDetails': [{'modality': 'TEXT', 'tokenCount': 12}]}
+    """
+
+    totalTokens: int
     promptTokensDetails: List[PromptTokensDetails]
 
 
@@ -238,6 +296,8 @@ class RequestBody(TypedDict, total=False):
     safetySettings: List[SafetSettingsConfig]
     generationConfig: GenerationConfig
     cachedContent: str
+    labels: Dict[str, str]
+    speechConfig: SpeechConfig
 
 
 class CachedContentRequestBody(TypedDict, total=False):
@@ -308,6 +368,15 @@ class LogprobsResult(TypedDict, total=False):
     chosenCandidates: List[LogprobsCandidate]
 
 
+class UrlMetadata(TypedDict, total=False):
+    retrievedUrl: str
+    urlRetrievalStatus: str
+
+
+class UrlContextMetadata(TypedDict, total=False):
+    urlMetadata: List[UrlMetadata]
+
+
 class Candidates(TypedDict, total=False):
     index: int
     content: HttpxContentType
@@ -327,6 +396,7 @@ class Candidates(TypedDict, total=False):
     groundingMetadata: GroundingMetadata
     finishMessage: str
     logprobsResult: LogprobsResult
+    urlContextMetadata: UrlContextMetadata
 
 
 class PromptFeedback(TypedDict):
@@ -339,6 +409,7 @@ class GenerateContentResponseBody(TypedDict, total=False):
     candidates: List[Candidates]
     promptFeedback: PromptFeedback
     usageMetadata: Required[UsageMetadata]
+    responseId: str
 
 
 class FineTuneHyperparameters(TypedDict, total=False):
@@ -498,6 +569,10 @@ class OutputConfig(TypedDict, total=False):
     gcsDestination: GcsDestination
 
 
+class OutputInfo(TypedDict, total=False):
+    gcsOutputDirectory: str
+
+
 class GcsBucketResponse(TypedDict):
     """
     TypedDict for GCS bucket upload response
@@ -556,6 +631,7 @@ class VertexBatchPredictionResponse(TypedDict, total=False):
     model: str
     inputConfig: InputConfig
     outputConfig: OutputConfig
+    outputInfo: OutputInfo
     state: str
     createTime: str
     updateTime: str
@@ -563,3 +639,10 @@ class VertexBatchPredictionResponse(TypedDict, total=False):
 
 
 VERTEX_CREDENTIALS_TYPES = Union[str, Dict[str, str]]
+
+
+class VertexPartnerProvider(str, Enum):
+    mistralai = "mistralai"
+    llama = "llama"
+    ai21 = "ai21"
+    claude = "claude"

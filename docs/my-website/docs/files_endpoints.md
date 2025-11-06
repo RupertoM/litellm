@@ -2,9 +2,11 @@
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
-# /files
+# Provider Files Endpoints
 
 Files are used to upload documents that can be used with features like Assistants, Fine-tuning, and Batch API.
+
+Use this to call the provider's `/files` endpoints directly, in the OpenAI format. 
 
 ## Quick Start
 
@@ -19,7 +21,7 @@ Files are used to upload documents that can be used with features like Assistant
 <Tabs>
 <TabItem value="proxy" label="LiteLLM PROXY Server">
 
-### 1. Setup config.yaml
+1. Setup config.yaml
 
 ```
 # for /files endpoints
@@ -32,7 +34,7 @@ files_settings:
     api_key: os.environ/OPENAI_API_KEY
 ```
 
-### 2. Start LiteLLM PROXY Server
+2. Start LiteLLM PROXY Server
 
 ```bash
 litellm --config /path/to/config.yaml
@@ -40,7 +42,7 @@ litellm --config /path/to/config.yaml
 ## RUNNING on http://0.0.0.0:4000
 ```
 
-### 3. Use OpenAI's /files endpoints
+3. Use OpenAI's /files endpoints
 
 Upload a File
 
@@ -55,7 +57,7 @@ client = OpenAI(
 client.files.create(
     file=wav_data,
     purpose="user_data",
-    extra_body={"custom_llm_provider": "openai"}
+    extra_headers={"custom-llm-provider": "openai"}
 )
 ```
 
@@ -69,7 +71,7 @@ client = OpenAI(
     base_url="http://0.0.0.0:4000/v1"
 )
 
-files = client.files.list(extra_body={"custom_llm_provider": "openai"})
+files = client.files.list(extra_headers={"custom-llm-provider": "openai"})
 print("files=", files)
 ```
 
@@ -83,7 +85,7 @@ client = OpenAI(
     base_url="http://0.0.0.0:4000/v1"
 )
 
-file = client.files.retrieve(file_id="file-abc123", extra_body={"custom_llm_provider": "openai"})
+file = client.files.retrieve(file_id="file-abc123", extra_headers={"custom-llm-provider": "openai"})
 print("file=", file)
 ```
 
@@ -97,7 +99,7 @@ client = OpenAI(
     base_url="http://0.0.0.0:4000/v1"
 )
 
-response = client.files.delete(file_id="file-abc123", extra_body={"custom_llm_provider": "openai"})
+response = client.files.delete(file_id="file-abc123", extra_headers={"custom-llm-provider": "openai"})
 print("delete response=", response)
 ```
 
@@ -111,7 +113,7 @@ client = OpenAI(
     base_url="http://0.0.0.0:4000/v1"
 )
 
-content = client.files.content(file_id="file-abc123", extra_body={"custom_llm_provider": "openai"})
+content = client.files.content(file_id="file-abc123", extra_headers={"custom-llm-provider": "openai"})
 print("content=", content)
 ```
 

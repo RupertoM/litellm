@@ -1,21 +1,55 @@
+general_settings:
+  key_management_system: "cyberark"
+  key_management_settings: 
+    store_virtual_keys: true
+    prefix_for_stored_virtual_keys: "litellm/"
+    access_mode: "read_and_write"
+
 model_list:
-  - model_name: fake-openai-endpoint
+  - model_name: aws/anthropic/bedrock-claude-3-5-sonnet-v1
     litellm_params:
-      model: openai/fake
-      api_key: fake-key
-      api_base: https://exampleopenaiendpoint-production.up.railway.app/
-  - model_name: openai/gpt-4o
+      model: bedrock/us.anthropic.claude-3-5-sonnet-20240620-v1:0
+      aws_region_name: us-east-1
+      custom_llm_provider: bedrock
+  - model_name: aws/anthropic/bedrock-claude-3-5-sonnet-v1
     litellm_params:
-      model: openai/gpt-4o
-      api_key: fake-key
+      model: bedrock/us.anthropic.claude-3-5-sonnet-20240620-v1:0
+      aws_region_name: us-west-2
+      custom_llm_provider: bedrock
+  - model_name: bedrock/*
+    litellm_params:
+      model: bedrock/*
+      custom_llm_provider: bedrock
+      aws_region_name: us-west-2
+    
+
+# like MCPs/vector stores
+search_tools:
+  - search_tool_name: litellm-search
+    litellm_params:
+      search_provider: perplexity
+      api_key: os.environ/PERPLEXITYAI_API_KEY
+  - search_tool_name: exa-search
+    litellm_params:
+      search_provider: exa_ai
+      api_key: os.environ/EXA_API_KEY
+  
 
 litellm_settings:
-  default_team_settings:
-      - team_id: test_dev
-        success_callback: ["langfuse", "s3"]
-        langfuse_secret: secret-test-key
-        langfuse_public_key: public-test-key
-      - team_id: my_workflows
-        success_callback: ["langfuse", "s3"]
-        langfuse_secret: secret-workflows-key
-        langfuse_public_key: public-workflows-key
+  # Comprehensive logging settings
+  store_audit_logs: true
+  verbose: true
+  log_level: "DEBUG"  # Options: DEBUG, INFO, WARNING, ERROR
+  callbacks: ["s3_v2", "smtp_email"]
+  s3_callback_params:
+    s3_endpoint_url: "https://localhost:443"  # Replace with your Minio server URL and port
+    s3_aws_access_key_id: "minioadmin"
+    s3_aws_secret_access_key: "minioadmin"
+    s3_region_name: "minio"  # This can be any value for Minio
+    s3_bucket_name: "litellm-test"  # Replace with your bucket name
+    s3_use_ssl: False
+    s3_verify: False
+  cache: True
+  cache_params:
+    type: local
+  drop_params: True

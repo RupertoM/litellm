@@ -125,22 +125,6 @@ class AzureChatCompletion(BaseAzureLLM, BaseLLM):
     def __init__(self) -> None:
         super().__init__()
 
-    def validate_environment(self, api_key, azure_ad_token, azure_ad_token_provider):
-        headers = {
-            "content-type": "application/json",
-        }
-        if api_key is not None:
-            headers["api-key"] = api_key
-        elif azure_ad_token is not None:
-            if azure_ad_token.startswith("oidc/"):
-                azure_ad_token = get_azure_ad_token_from_oidc(azure_ad_token)
-            headers["Authorization"] = f"Bearer {azure_ad_token}"
-        elif azure_ad_token_provider is not None:
-            azure_ad_token = azure_ad_token_provider()
-            headers["Authorization"] = f"Bearer {azure_ad_token}"
-
-        return headers
-
     def make_sync_azure_openai_chat_completion_request(
         self,
         azure_client: AzureOpenAI,
@@ -198,12 +182,12 @@ class AzureChatCompletion(BaseAzureLLM, BaseLLM):
         model: str,
         messages: list,
         model_response: ModelResponse,
-        api_key: str,
+        api_key: Optional[str],
         api_base: str,
         api_version: str,
         api_type: str,
-        azure_ad_token: str,
-        azure_ad_token_provider: Callable,
+        azure_ad_token: Optional[str],
+        azure_ad_token_provider: Optional[Callable],
         dynamic_params: bool,
         print_verbose: Callable,
         timeout: Union[float, httpx.Timeout],
@@ -242,9 +226,18 @@ class AzureChatCompletion(BaseAzureLLM, BaseLLM):
                     azure_ad_token_provider=azure_ad_token_provider,
                     acompletion=acompletion,
                     client=client,
+                    litellm_params=litellm_params,
                 )
 
                 data = {"model": None, "messages": messages, **optional_params}
+            elif litellm.AzureOpenAIGPT5Config.is_model_gpt_5_model(model=model):
+                data = litellm.AzureOpenAIGPT5Config().transform_request(
+                    model=model,
+                    messages=messages,
+                    optional_params=optional_params,
+                    litellm_params=litellm_params,
+                    headers=headers or {},
+                )
             else:
                 data = litellm.AzureOpenAIConfig().transform_request(
                     model=model,
@@ -379,7 +372,7 @@ class AzureChatCompletion(BaseAzureLLM, BaseLLM):
 
     async def acompletion(
         self,
-        api_key: str,
+        api_key: Optional[str],
         api_version: str,
         model: str,
         api_base: str,
@@ -484,7 +477,7 @@ class AzureChatCompletion(BaseAzureLLM, BaseLLM):
         self,
         logging_obj,
         api_base: str,
-        api_key: str,
+        api_key: Optional[str],
         api_version: str,
         dynamic_params: bool,
         data: dict,
@@ -562,7 +555,7 @@ class AzureChatCompletion(BaseAzureLLM, BaseLLM):
         self,
         logging_obj: LiteLLMLoggingObj,
         api_base: str,
-        api_key: str,
+        api_key: Optional[str],
         api_version: str,
         dynamic_params: bool,
         data: dict,
@@ -786,10 +779,12 @@ class AzureChatCompletion(BaseAzureLLM, BaseLLM):
             status_code = getattr(e, "status_code", 500)
             error_headers = getattr(e, "headers", None)
             error_response = getattr(e, "response", None)
+            error_text = str(e)
             if error_headers is None and error_response:
                 error_headers = getattr(error_response, "headers", None)
+                error_text = error_response.text
             raise AzureOpenAIError(
-                status_code=status_code, message=str(e), headers=error_headers
+                status_code=status_code, message=error_text, headers=error_headers
             )
 
     async def make_async_azure_httpx_request(
@@ -1115,12 +1110,24 @@ class AzureChatCompletion(BaseAzureLLM, BaseLLM):
                     "base_model"
                 )
 
-            data = {"model": model, "prompt": prompt, **optional_params}
+            # Azure image generation API doesn't support extra_body parameter
+            extra_body = optional_params.pop("extra_body", {})
+            flattened_params = {**optional_params, **extra_body}
+            
+            data = {"model": model, "prompt": prompt, **flattened_params}
             max_retries = data.pop("max_retries", 2)
             if not isinstance(max_retries, int):
                 raise AzureOpenAIError(
                     status_code=422, message="max retries must be an int"
                 )
+
+            if api_key is None and azure_ad_token_provider is not None:
+                azure_ad_token = azure_ad_token_provider()
+                if azure_ad_token:
+                    headers.pop(
+                        "api-key", None
+                    )
+                    headers["Authorization"] = f"Bearer {azure_ad_token}"
 
             # init AzureOpenAI Client
             azure_client_params: Dict[str, Any] = self.initialize_azure_sdk_client(

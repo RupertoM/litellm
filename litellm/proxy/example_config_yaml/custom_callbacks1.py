@@ -30,6 +30,8 @@ class MyCustomHandler(
             "audio_transcription",
             "pass_through_endpoint",
             "rerank",
+            "mcp_call",
+            "anthropic_messages",
         ],
     ):
         return data
@@ -39,6 +41,7 @@ class MyCustomHandler(
         request_data: dict,
         original_exception: Exception,
         user_api_key_dict: UserAPIKeyAuth,
+        traceback_str: Optional[str] = None,
     ):
         pass
 
@@ -62,6 +65,8 @@ class MyCustomHandler(
             "moderation",
             "audio_transcription",
             "responses",
+            "mcp_call",
+            "anthropic_messages",
         ],
     ):
         pass

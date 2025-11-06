@@ -19,7 +19,7 @@ LiteLLM writes `UPDATE` and `UPSERT` queries to the DB. When using 10+ instances
 
 ### Stage 1. Each instance writes updates to redis
 
-Each instance will accumlate the spend updates for a key, user, team, etc and write the updates to a redis queue. 
+Each instance will accumulate the spend updates for a key, user, team, etc and write the updates to a redis queue. 
 
 <Image img={require('../../img/deadlock_fix_1.png')}  style={{ width: '900px', height: 'auto' }} />
 <p style={{textAlign: 'left', color: '#666'}}>
@@ -83,4 +83,30 @@ LiteLLM emits the following prometheus metrics to monitor the health/status of t
 | `litellm_redis_daily_spend_update_queue_size`       | Number of items in the Redis daily spend update queue.  These are the aggregate spend logs for each user.                    | Redis        |
 | `litellm_in_memory_spend_update_queue_size`         | In-memory aggregate spend values for keys, users, teams, team members, etc.| In-Memory    |
 | `litellm_redis_spend_update_queue_size`             | Redis aggregate spend values for keys, users, teams, etc.                  | Redis        |
+
+
+## Troubleshooting: Redis Connection Errors
+
+You may see errors like:
+
+```
+LiteLLM Redis Caching: async async_increment() - Got exception from REDIS No connection available., Writing value=21
+LiteLLM Redis Caching: async set_cache_pipeline() - Got exception from REDIS No connection available., Writing value=None
+```
+ 
+This means all available Redis connections are in use, and LiteLLM cannot obtain a new connection from the pool. This can happen under high load or with many concurrent proxy requests.
+
+**Solution:**
+
+- Increase the `max_connections` parameter in your Redis config section in `proxy_config.yaml` to allow more simultaneous connections. For example:
+
+```yaml
+litellm_settings:
+  cache: True
+  cache_params:
+    type: redis
+    max_connections: 100  # Increase as needed for your traffic
+```
+
+Adjust this value based on your expected concurrency and Redis server capacity.
 

@@ -2,10 +2,11 @@ import asyncio
 import json
 import time
 from datetime import datetime
-from typing import Literal, Optional, TypedDict
+from typing import Literal, Optional
 from urllib.parse import urlparse
 
 import httpx
+from typing_extensions import TypedDict
 
 import litellm
 from litellm._logging import verbose_proxy_logger
@@ -14,10 +15,12 @@ from litellm.litellm_core_utils.litellm_logging import (
     get_standard_logging_object_payload,
 )
 from litellm.litellm_core_utils.thread_pool_executor import executor
-from litellm.proxy.pass_through_endpoints.types import PassthroughStandardLoggingPayload
 from litellm.types.passthrough_endpoints.assembly_ai import (
     ASSEMBLY_AI_MAX_POLLING_ATTEMPTS,
     ASSEMBLY_AI_POLLING_INTERVAL,
+)
+from litellm.types.passthrough_endpoints.pass_through_endpoints import (
+    PassthroughStandardLoggingPayload,
 )
 
 
